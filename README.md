@@ -1,23 +1,77 @@
 # SkillTree
-A vanilla JS skill tree component. Can be used on personal websites to show off skills in an interesting UI.
-This was originally made for my own website, but I found it didn't quite fit.
 
-![image](https://github.com/user-attachments/assets/085be04e-5549-4326-a45d-622065ff019d)
+A bold, modern, and dependency-free vanilla JS skill tree component. Perfect for showcasing technical progression or rpg-style skill trees in web applications.
+
+## Features
+
+- **Zero Dependencies:** Pure Vanilla JS and CSS.
+- **Auto-Layout:** Automatically arranges nodes in layers based on dependencies.
+- **SVG Connections:** Smooth, cubic-bezier connectors between nodes.
+- **Interactive:** Hover effects highlight entire dependency chains (ancestors and descendants).
+- **Themable:** Built with CSS variables for easy customization (Cyberpunk, Sci-Fi, Minimalist).
+- **Responsive:** Works on desktop and mobile.
 
 ## Usage
 
-You can simply follow the demo folder for how to use the component. It is as simple as creating a config object and then running:
+1. **Include the CSS:**
+   ```html
+   <link href="skilltree.css" rel="stylesheet">
+   ```
 
+2. **Prepare your container:**
+   ```html
+   <div id="skill-tree"></div>
+   ```
+
+3. **Initialize the component:**
+   ```javascript
+   import { SkillTree } from './skilltree.js';
+
+   const data = [
+     {
+       id: 'html',
+       title: 'HTML5',
+       description: 'Semantic markup',
+       points: 100
+     },
+     {
+       id: 'css',
+       title: 'CSS3',
+       description: 'Style and Layout',
+       dependsOn: ['html'], // Define dependencies by ID
+       points: 80
+     }
+   ];
+
+   const tree = new SkillTree('#skill-tree', data, {
+     theme: {
+       primary: '#00f0ff', // Accent color
+       secondary: '#ff003c', // Secondary accent
+       background: '#111', // Background color
+       nodeSize: 80, // Size of nodes in px
+       gap: 100 // Gap between nodes
+     }
+   });
+   ```
+
+## Configuration
+
+### Node Data Structure
+```javascript
+{
+  id: string | number,  // Unique identifier
+  title: string,        // Display name
+  description: string,  // Tooltip/Info text
+  iconPath: string,     // URL to icon image (optional)
+  dependsOn: [],        // Array of parent IDs
+  points: number        // 0-100 (optional, affects progress ring)
+}
 ```
-import { skillConfig } from './config.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const skillTree = new SkillTree(skillConfig);
-  // Mount the skill tree to the container and template
-  skillTree.mount('.skills-container', '#skill-template');
-});
-```
+### Options
+- `orientation`: 'horizontal' (default) or 'vertical' (experimental).
+- `theme`: Object containing color and size overrides.
 
-Feel free to implement different templates than the default one I created. 
+## Contributing
 
-Please send out a pull request if you'd like to contribute.
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

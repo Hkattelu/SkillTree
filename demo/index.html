@@ -1,48 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skill Tree Demo</title>
-  <link href="styles.css" rel="stylesheet">
+  <title>Gemini Skill Tree</title>
+  <!-- Import the new CSS -->
+  <link href="../skilltree.css" rel="stylesheet">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #050505;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 40px;
+      background: rgba(0,0,0,0.5);
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: 1.5rem;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg, #fff, #888);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #skill-tree-wrapper {
+      flex: 1;
+      overflow: hidden; /* SkillTree component handles its own scroll */
+      position: relative;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    
+    button {
+      background: #222;
+      border: 1px solid #444;
+      color: #ccc;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 4px;
+    }
+    
+    button:hover {
+      background: #333;
+      color: #fff;
+      border-color: #666;
+    }
+
+    #selected-skill {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      background: rgba(10, 10, 10, 0.9);
+      border: 1px solid #333;
+      padding: 20px;
+      border-radius: 8px;
+      color: #fff;
+      transform: translateY(150%);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 100;
+    }
+    
+    #selected-skill.visible {
+      transform: translateY(0);
+    }
+    
+    #selected-skill h2 { margin-top: 0; color: #00f0ff; }
+  </style>
 </head>
-
 <body>
-  <div class="page">
+  <div id="app">
     <header>
-      <h1>Skill Tree Demo</h1>
-    </header>
-
-    <div class="skill-tree">
-      <!-- Skill tree container -->
-      <div class="skills-container">
-        <!-- Skills will be dynamically inserted here -->
+      <h1>Tech Mastery Protocol</h1>
+      <div class="controls">
+        <button id="reset-view">Reset View</button>
+        <button id="toggle-theme">Toggle Theme</button>
       </div>
+    </header>
+    
+    <div id="skill-tree-wrapper"></div>
+    
+    <div id="selected-skill">
+      <h2 id="skill-title">Skill Name</h2>
+      <p id="skill-desc">Description goes here.</p>
     </div>
   </div>
 
-  <!-- Insert this at the bottom of your document body -->
-  <template id="skill-template">
-    <div class="skill">
-      <div class="skill-dependency"></div>
-      <div class="skill-icon">
-        <img class="icon"></img>
-      </div>
-      <div class="skill-frame">
-        <div class="skill-tooltip">
-          <h3 class="skill-name"></h3>
-          <div class="skill-description"></div>
-        </div>
-        <div class="skill-points">
-          <progress class="points" max="100"></progress>
-        </div>
-      </div>
-    </div>
-  </template>
-
-  <script src="../skilltree.js" type="module"></script>
-  <script src="./demo.js" type="module"></script>
+  <script type="module" src="./demo.js"></script>
 </body>
-
 </html>

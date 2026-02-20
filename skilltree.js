@@ -1,253 +1,351 @@
-// Core SkillTree class
 export class SkillTree {
-  constructor(config) {
-    this.config = config;
-    this.skills = new Map();
-    this.state = {};
-
-    this.container = null;
-    this.template = null;
-  }
-
-  mount(containerSelector, templateSelector) {
-    this.container = document.querySelector(containerSelector);
-    this.template = document.querySelector(templateSelector);
-
-    if (!this.container || !this.template) {
-      throw new Error('Container or template not found');
+  constructor(containerSelector, data, options = {}) {
+    this.container = typeof containerSelector === 'string' 
+      ? document.querySelector(containerSelector) 
+      : containerSelector;
+    
+    if (!this.container) {
+      throw new Error(`SkillTree: Container '${containerSelector}' not found.`);
     }
+
+    this.data = JSON.parse(JSON.stringify(data)); // Deep copy
+    this.options = {
+      orientation: 'horizontal', // or 'vertical'
+      theme: {
+        primary: '#00f0ff', // Cyberpunk cyan
+        secondary: '#7000ff', // Cyberpunk purple
+        background: '#0a0a0a',
+        text: '#ffffff',
+        nodeSize: 80,
+        gap: 100,
+        ...options.theme
+      },
+      ...options
+    };
+
+    this.nodes = new Map();
+    this.layers = [];
+    this.svg = null;
+    this.resizeObserver = null;
 
     this.init();
   }
 
   init() {
+    this.container.classList.add('st-container');
+    this.container.style.setProperty('--st-primary', this.options.theme.primary);
+    this.container.style.setProperty('--st-secondary', this.options.theme.secondary);
+    this.container.style.setProperty('--st-bg', this.options.theme.background);
+    this.container.style.setProperty('--st-text', this.options.theme.text);
+    this.container.style.setProperty('--st-node-size', `${this.options.theme.nodeSize}px`);
+    this.container.style.setProperty('--st-gap', `${this.options.theme.gap}px`);
+
+    this.processData();
+    this.renderLayout();
     this.bindEvents();
-    this.bindResizeObserver();
-
-    this.initializeSkills();
-    this.render();
+    
+    // Initial draw might be too early for correct coordinates if images haven't loaded, 
+    // but ResizeObserver will catch the subsequent layout stability.
+    this.resizeObserver = new ResizeObserver(() => {
+      this.drawConnections();
+    });
+    this.resizeObserver.observe(this.container);
+    
+    // Trigger initial animation
+    requestAnimationFrame(() => this.container.classList.add('st-loaded'));
   }
 
-  render() {
-    if (!this.container) return;
-    this.container.innerHTML = '';
-
-    const skillLevels = this.groupSkillsByTree();
-
-    // Create a column for each level
-    skillLevels.forEach((levelSkills, level) => {
-      const column = document.createElement('div');
-      column.className = 'skill-tree-column';
-
-      levelSkills.forEach(skill => {
-        const element = this.createSkillElement(skill);
-        column.appendChild(element);
+  processData() {
+    // 1. Map ID to Node and Initialize
+    this.data.forEach(item => {
+      this.nodes.set(item.id, {
+        ...item,
+        children: [],
+        parents: [],
+        layer: 0,
+        element: null
       });
-
-      this.container.appendChild(column);
     });
 
-    this.updateDependencyLines();
-  }
-
-  initializeSkills() {
-    // First create all skill instances
-    this.config.skills.forEach(data => {
-      this.skills.set(data.id, new Skill(data));
-    });
-
-    // Then wire up dependencies
-    this.config.skills.forEach(skillData => {
-      if (skillData.dependsOn) {
-        const dependent = this.skills.get(skillData.id);
-        skillData.dependsOn.forEach(depId => {
-          const dependency = this.skills.get(depId);
-          dependent.addDependency(dependency);
+    // 2. Build Relationships
+    this.nodes.forEach(node => {
+      if (node.dependsOn && Array.isArray(node.dependsOn)) {
+        node.dependsOn.forEach(parentId => {
+          const parent = this.nodes.get(parentId);
+          if (parent) {
+            parent.children.push(node.id);
+            node.parents.push(parentId);
+          }
         });
       }
     });
+
+    // 3. Calculate Layers (Topological-ish Sort)
+    // Simple approach: Layer = Max(Parent Layers) + 1
+    // We iterate until stable to handle deep trees.
+    let changed = true;
+    let iterations = 0;
+    while (changed && iterations < 100) {
+      changed = false;
+      this.nodes.forEach(node => {
+        if (node.parents.length > 0) {
+          const maxParentLayer = Math.max(...node.parents.map(pid => this.nodes.get(pid).layer));
+          if (node.layer <= maxParentLayer) {
+            node.layer = maxParentLayer + 1;
+            changed = true;
+          }
+        }
+      });
+      iterations++;
+    }
+
+    // 4. Group by Layer
+    const layers = [];
+    this.nodes.forEach(node => {
+      if (!layers[node.layer]) layers[node.layer] = [];
+      layers[node.layer].push(node);
+    });
+    this.layers = layers;
   }
 
-  createSkillElement(skill) {
-    const clone = this.template.content.cloneNode(true);
-    const skillElement = clone.querySelector('.skill');
+  renderLayout() {
+    this.container.innerHTML = '';
+    
+    // Create SVG Layer for connections
+    this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.svg.classList.add('st-connections');
+    this.container.appendChild(this.svg);
 
-    return skill.fillElement(skillElement);
+    // Create DOM Layer for nodes
+    const grid = document.createElement('div');
+    grid.classList.add('st-grid');
+    if (this.options.orientation === 'vertical') {
+      grid.classList.add('st-vertical');
+    }
+    
+    this.layers.forEach((layerNodes, layerIndex) => {
+      const column = document.createElement('div');
+      column.classList.add('st-layer');
+      
+      layerNodes.forEach(node => {
+        const el = this.createNodeElement(node);
+        node.element = el;
+        column.appendChild(el);
+      });
+      
+      grid.appendChild(column);
+    });
+
+    this.container.appendChild(grid);
+  }
+
+  createNodeElement(node) {
+    const el = document.createElement('div');
+    el.classList.add('st-node');
+    el.dataset.id = node.id;
+    el.tabIndex = 0; // Make focusable
+
+    // Icon
+    if (node.iconPath) {
+      const iconContainer = document.createElement('div');
+      iconContainer.classList.add('st-node-icon');
+      const img = document.createElement('img');
+      img.src = node.iconPath;
+      img.alt = node.title;
+      iconContainer.appendChild(img);
+      el.appendChild(iconContainer);
+    } else {
+        // Fallback text icon
+        const iconContainer = document.createElement('div');
+        iconContainer.classList.add('st-node-icon', 'text-fallback');
+        iconContainer.textContent = node.title.substring(0, 2).toUpperCase();
+        el.appendChild(iconContainer);
+    }
+
+    // Info Content (Title + desc)
+    const content = document.createElement('div');
+    content.classList.add('st-node-content');
+    
+    const title = document.createElement('div');
+    title.classList.add('st-node-title');
+    title.textContent = node.title;
+    
+    const desc = document.createElement('div');
+    desc.classList.add('st-node-desc');
+    desc.textContent = node.description || '';
+
+    content.appendChild(title);
+    content.appendChild(desc);
+    el.appendChild(content);
+
+    // Status/Points indicator
+    if (node.points !== undefined) {
+      const points = document.createElement('div');
+      points.classList.add('st-node-points');
+      points.textContent = `${node.points}/100`;
+      
+      // Visual progress ring or bar could go here
+      el.style.setProperty('--progress', `${node.points}%`);
+      el.classList.toggle('st-completed', node.points >= 100);
+      el.classList.toggle('st-locked', node.parents.some(pid => {
+        const p = this.nodes.get(pid);
+        return !p || (p.points || 0) < 100; // Example logic: locked if parent not maxed
+      }));
+      
+      el.appendChild(points);
+    }
+
+    return el;
+  }
+
+  drawConnections() {
+    if (!this.svg) return;
+    
+    // Clear existing paths
+    this.svg.innerHTML = '';
+    
+    // Update SVG dimensions to match container scroll area
+    const rect = this.container.getBoundingClientRect();
+    const scrollWidth = this.container.scrollWidth;
+    const scrollHeight = this.container.scrollHeight;
+    
+    this.svg.setAttribute('width', scrollWidth);
+    this.svg.setAttribute('height', scrollHeight);
+    
+    // Create definitions for markers (arrowheads)
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', 'arrowhead');
+    marker.setAttribute('markerWidth', '10');
+    marker.setAttribute('markerHeight', '7');
+    marker.setAttribute('refX', '9');
+    marker.setAttribute('refY', '3.5');
+    marker.setAttribute('orient', 'auto');
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+    polygon.setAttribute('fill', this.options.theme.primary);
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+    this.svg.appendChild(defs);
+
+    // Draw paths
+    const containerRect = this.container.getBoundingClientRect();
+    const offsetX = this.container.scrollLeft;
+    const offsetY = this.container.scrollTop;
+
+    this.nodes.forEach(node => {
+      node.parents.forEach(parentId => {
+        const parent = this.nodes.get(parentId);
+        if (!parent || !parent.element || !node.element) return;
+
+        const pRect = parent.element.getBoundingClientRect();
+        const cRect = node.element.getBoundingClientRect();
+
+        // Calculate relative coordinates including scroll offset
+        const startX = (pRect.right - containerRect.left) + offsetX;
+        const startY = (pRect.top + pRect.height / 2 - containerRect.top) + offsetY;
+        
+        const endX = (cRect.left - containerRect.left) + offsetX;
+        const endY = (cRect.top + cRect.height / 2 - containerRect.top) + offsetY;
+
+        // Path Logic: Cubic Bezier for smooth curves
+        const deltaX = endX - startX;
+        const cp1x = startX + deltaX * 0.5; // Control point 1
+        const cp1y = startY;
+        const cp2x = endX - deltaX * 0.5; // Control point 2
+        const cp2y = endY;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const d = `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
+        
+        path.setAttribute('d', d);
+        path.classList.add('st-path');
+        
+        // Add classes for interactivity
+        path.dataset.from = parent.id;
+        path.dataset.to = node.id;
+
+        this.svg.appendChild(path);
+      });
+    });
   }
 
   bindEvents() {
-    this.container.addEventListener('click', (e) => this.handleSkillClick(e));
-  }
-
-  bindResizeObserver() {
-    const resizeObserver = new ResizeObserver(() => {
-      this.updateDependencyLines();
-    });
-    resizeObserver.observe(this.container);
-  }
-
-  handleSkillClick(e) {
-    const skillEl = e.target.closest('.skill');
-    if (!skillEl) return;
-
-    // Handle mobile tooltip
-    if (window.matchMedia('(hover: none)').matches) {
-      this.container.querySelectorAll('.skill.active').forEach(el => {
-        if (el !== skillEl) el.classList.remove('active');
-      });
-      skillEl.classList.toggle('active');
-    }
-  }
-
-  updateDependencyLines() {
-    // Remove existing lines
-    this.container.querySelectorAll('.skill-dependency').forEach(el => el.remove());
-
-    // Create a container for dependency lines
-    let linesContainer = document.querySelector('.skill-dependency-container');
-    if (!linesContainer) {
-      linesContainer = document.createElement('div');
-      linesContainer.className = 'skill-dependency-container';
-    }
-
-    this.container.appendChild(linesContainer);
-
-    // Draw dependencies for each skill
-    this.skills.forEach(skill => {
-        if (skill.dependencies.size > 0) {
-            this.drawMultipleDependencyLines(skill, Array.from(skill.dependencies), linesContainer);
-        }
-    });
-}
-
-drawMultipleDependencyLines(toSkill, fromSkills, container) {
-    const toEl = this.container.querySelector(`[data-skill-id="${toSkill.id}"]`);
-    if (!toEl) return;
-
-    const toRect = toEl.getBoundingClientRect();
-    const containerRect = this.container.getBoundingClientRect();
-
-    // Get all dependency elements and their positions
-    const deps = fromSkills.map(skill => {
-        const el = this.container.querySelector(`[data-skill-id="${skill.id}"]`);
-        return {
-            el,
-            rect: el.getBoundingClientRect()
-        };
-    }).filter(dep => dep.el);
-
-    if (deps.length === 0) return;
-
-    // Calculate the horizontal line position
-    const minX = Math.min(...deps.map(d => d.rect.left + d.rect.width / 2));
-    const maxX = Math.max(...deps.map(d => d.rect.left + d.rect.width / 2));
-    const midY = Math.max(...deps.map(d => d.rect.bottom)) + 
-                (toRect.top - Math.max(...deps.map(d => d.rect.bottom))) / 2;
-
-    // Draw horizontal connecting line
-    if (deps.length > 1) {
-        const horizontalLine = document.createElement('div');
-        horizontalLine.className = 'skill-dependency horizontal';
-        Object.assign(horizontalLine.style, {
-            position: 'absolute',
-            left: `${minX - containerRect.left}px`,
-            top: `${midY - containerRect.top}px`,
-            width: `${maxX - minX}px`,
-            height: '2px'
-        });
-        container.appendChild(horizontalLine);
-    }
-
-    // Draw vertical lines from dependencies to horizontal line
-    deps.forEach(dep => {
-        const verticalTop = document.createElement('div');
-        verticalTop.className = 'skill-dependency vertical';
-        Object.assign(verticalTop.style, {
-            position: 'absolute',
-            left: `${dep.rect.left + dep.rect.width / 2 - containerRect.left}px`,
-            top: `${dep.rect.bottom - containerRect.top}px`,
-            height: `${midY - dep.rect.bottom}px`,
-            width: '2px'
-        });
-        container.appendChild(verticalTop);
-    });
-
-    // Draw vertical line from horizontal line to target skill
-    const verticalBottom = document.createElement('div');
-    verticalBottom.className = 'skill-dependency vertical';
-    Object.assign(verticalBottom.style, {
-        position: 'absolute',
-        left: `${toRect.left + toRect.width / 2 - containerRect.left}px`,
-        top: `${midY - containerRect.top}px`,
-        height: `${toRect.top - midY}px`,
-        width: '2px'
-    });
-    container.appendChild(verticalBottom);
-}
-
-  groupSkillsByTree() {
-    const trees = new Map();
-    const rootSkills = new Set();
-
-    // Find root skills (those with no dependencies)
-    this.skills.forEach(skill => {
-      if (skill.dependencies.size === 0) {
-        rootSkills.add(skill);
+    // Delegation for node interactions
+    this.container.addEventListener('click', (e) => {
+      const nodeEl = e.target.closest('.st-node');
+      if (nodeEl) {
+        this.handleNodeClick(nodeEl.dataset.id);
       }
     });
 
-    // Create trees starting from each root skill
-    rootSkills.forEach(rootSkill => {
-      const tree = [rootSkill];
-      const addDependents = (skill) => {
-        const dependents = Array.from(skill.dependents);
-        tree.push(...dependents);
-        dependents.forEach(addDependents);
-      };
-      addDependents(rootSkill);
-      trees.set(rootSkill, tree);
+    this.container.addEventListener('mouseover', (e) => {
+      const nodeEl = e.target.closest('.st-node');
+      if (nodeEl) {
+        this.highlightConnections(nodeEl.dataset.id, true);
+      }
     });
 
-    return Array.from(trees.values());
-  }
-}
-
-// Skill class
-class Skill {
-  constructor(data) {
-    this.id = data.id;
-    this.title = data.title;
-    this.description = data.description;
-    this.iconPath = data.iconPath;
-    this.points = data.points;
-
-    this.dependencies = new Set();
-    this.dependents = new Set();
+    this.container.addEventListener('mouseout', (e) => {
+      const nodeEl = e.target.closest('.st-node');
+      if (nodeEl) {
+        this.highlightConnections(nodeEl.dataset.id, false);
+      }
+    });
   }
 
-  fillElement(skillElement) {
-    skillElement.dataset.skillId = this.id;
-
-    if (this.iconPath) {
-      const iconElement = skillElement.querySelector('.icon');
-      iconElement.src = this.iconPath;
-      iconElement.alt = this.title;
+  handleNodeClick(id) {
+    const node = this.nodes.get(parseInt(id) || id);
+    if (node) {
+      console.log('Skill clicked:', node);
+      // Dispatch custom event
+      this.container.dispatchEvent(new CustomEvent('skillclick', { detail: node }));
+      
+      // Toggle active state
+      this.container.querySelectorAll('.st-node.active').forEach(el => el.classList.remove('active'));
+      node.element.classList.add('active');
     }
-
-    const progressBar = skillElement.querySelector('.points');
-    progressBar.value = this.points;
-
-    const tooltip = skillElement.querySelector('.skill-tooltip');
-    tooltip.querySelector('.skill-name').textContent = this.title;
-    tooltip.querySelector('.skill-description').textContent = this.description;
-
-    return skillElement;
   }
 
-  addDependency(skill) {
-    if (!skill || !(skill instanceof Skill)) { return; }
+  highlightConnections(id, active) {
+    const node = this.nodes.get(parseInt(id) || id);
+    if (!node) return;
 
-    this.dependencies.add(skill);
-    skill.dependents.add(this);
+    // Helper to traverse and highlight
+    const traverse = (currentId, direction, visited = new Set()) => {
+      if (visited.has(currentId)) return;
+      visited.add(currentId);
+      
+      const currentNode = this.nodes.get(currentId);
+      if (!currentNode) return;
+
+      if (active) currentNode.element.classList.add('st-highlight');
+      else currentNode.element.classList.remove('st-highlight');
+
+      if (direction === 'parents' || direction === 'both') {
+        currentNode.parents.forEach(pid => {
+          // Find path
+          const path = this.svg.querySelector(`path[data-from="${pid}"][data-to="${currentId}"]`);
+          if (path) {
+             if (active) path.classList.add('st-path-highlight');
+             else path.classList.remove('st-path-highlight');
+          }
+          traverse(pid, 'parents', visited);
+        });
+      }
+
+      if (direction === 'children' || direction === 'both') {
+        currentNode.children.forEach(cid => {
+          const path = this.svg.querySelector(`path[data-from="${currentId}"][data-to="${cid}"]`);
+          if (path) {
+             if (active) path.classList.add('st-path-highlight');
+             else path.classList.remove('st-path-highlight');
+          }
+          traverse(cid, 'children', visited);
+        });
+      }
+    };
+
+    traverse(node.id, 'both');
   }
 }
