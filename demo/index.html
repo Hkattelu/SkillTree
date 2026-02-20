@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gemini Skill Tree</title>
-  <!-- Import the new CSS -->
+  
+  <!-- Fonts: Space Grotesk (Headings) & Space Mono (Code/UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
   <link href="../skilltree.css" rel="stylesheet">
   <style>
     body, html {
@@ -12,8 +17,8 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      background: #050505;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #111; /* Match default theme */
+      font-family: 'Space Grotesk', sans-serif;
     }
     
     #app {
@@ -24,82 +29,100 @@
     }
 
     header {
-      padding: 20px 40px;
-      background: rgba(0,0,0,0.5);
-      border-bottom: 1px solid #333;
+      padding: 24px 40px;
+      border-bottom: 4px solid #333;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: #111;
       z-index: 100;
     }
 
     h1 {
       color: #fff;
-      font-size: 1.5rem;
+      font-size: 2rem;
       margin: 0;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      background: linear-gradient(90deg, #fff, #888);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    #skill-tree-wrapper {
-      flex: 1;
-      overflow: hidden; /* SkillTree component handles its own scroll */
-      position: relative;
+      font-weight: 700;
+      letter-spacing: -1px;
     }
     
     .controls {
       display: flex;
-      gap: 10px;
+      gap: 16px;
     }
     
     button {
-      background: #222;
-      border: 1px solid #444;
-      color: #ccc;
-      padding: 8px 16px;
+      background: #fff;
+      border: 2px solid #fff;
+      color: #000;
+      padding: 10px 20px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: all 0.2s;
-      border-radius: 4px;
+      box-shadow: 4px 4px 0px #333;
+      transition: transform 0.1s, box-shadow 0.1s;
     }
     
     button:hover {
-      background: #333;
-      color: #fff;
-      border-color: #666;
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px #333;
+    }
+    
+    button:active {
+      transform: translate(0, 0);
+      box-shadow: 2px 2px 0px #333;
     }
 
+    #skill-tree-wrapper {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    /* Panel for detail view (Optional side panel) */
     #selected-skill {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
-      width: 300px;
-      background: rgba(10, 10, 10, 0.9);
-      border: 1px solid #333;
-      padding: 20px;
-      border-radius: 8px;
-      color: #fff;
+      bottom: 40px;
+      right: 40px;
+      width: 320px;
+      background: #fff;
+      border: 4px solid #000;
+      padding: 24px;
       transform: translateY(150%);
-      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
       z-index: 100;
+      box-shadow: 12px 12px 0px rgba(0,0,0,0.5);
     }
     
     #selected-skill.visible {
       transform: translateY(0);
     }
     
-    #selected-skill h2 { margin-top: 0; color: #00f0ff; }
+    #selected-skill h2 { 
+        margin-top: 0; 
+        text-transform: uppercase;
+        font-size: 1.5rem;
+        border-bottom: 4px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    
+    #selected-skill p {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <header>
-      <h1>Tech Mastery Protocol</h1>
+      <h1>Tech Protocol_v2</h1>
       <div class="controls">
-        <button id="reset-view">Reset View</button>
-        <button id="toggle-theme">Toggle Theme</button>
+        <button id="reset-view">Reset</button>
+        <button id="toggle-theme">Theme</button>
       </div>
     </header>
     

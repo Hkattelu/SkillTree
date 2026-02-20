@@ -145,6 +145,30 @@ export class SkillTree {
     el.dataset.id = node.id;
     el.tabIndex = 0; // Make focusable
 
+    // Hierarchy Classes
+    if (node.layer === 0) el.classList.add('st-node-root');
+    if (node.children.length === 0) el.classList.add('st-node-leaf');
+
+    // Status Classes
+    const isCompleted = node.points >= 100;
+    const isStarted = node.points > 0 && node.points < 100;
+    
+    // Check if locked (if any parent is not completed)
+    const isLocked = node.parents.some(pid => {
+        const p = this.nodes.get(pid);
+        return !p || (p.points || 0) < 100;
+    });
+
+    if (isLocked) {
+        el.classList.add('st-locked');
+    } else if (isCompleted) {
+        el.classList.add('st-completed');
+    } else if (isStarted) {
+        el.classList.add('st-started');
+    } else {
+        el.classList.add('st-unlocked'); // Available but not started
+    }
+
     // Icon
     if (node.iconPath) {
       const iconContainer = document.createElement('div');
@@ -166,33 +190,36 @@ export class SkillTree {
     const content = document.createElement('div');
     content.classList.add('st-node-content');
     
+    const header = document.createElement('div');
+    header.classList.add('st-node-header');
+    
     const title = document.createElement('div');
     title.classList.add('st-node-title');
     title.textContent = node.title;
+    
+    const meta = document.createElement('div');
+    meta.classList.add('st-node-meta');
+    meta.textContent = isLocked ? 'LOCKED' : (isCompleted ? 'MASTERED' : `${node.points}%`);
+
+    header.appendChild(title);
+    header.appendChild(meta);
     
     const desc = document.createElement('div');
     desc.classList.add('st-node-desc');
     desc.textContent = node.description || '';
 
-    content.appendChild(title);
+    content.appendChild(header);
     content.appendChild(desc);
     el.appendChild(content);
 
-    // Status/Points indicator
-    if (node.points !== undefined) {
-      const points = document.createElement('div');
-      points.classList.add('st-node-points');
-      points.textContent = `${node.points}/100`;
-      
-      // Visual progress ring or bar could go here
-      el.style.setProperty('--progress', `${node.points}%`);
-      el.classList.toggle('st-completed', node.points >= 100);
-      el.classList.toggle('st-locked', node.parents.some(pid => {
-        const p = this.nodes.get(pid);
-        return !p || (p.points || 0) < 100; // Example logic: locked if parent not maxed
-      }));
-      
-      el.appendChild(points);
+    // Progress Bar (Visual only)
+    if (!isLocked) {
+        const progress = document.createElement('div');
+        progress.classList.add('st-progress-bar');
+        const fill = document.createElement('div');
+        fill.style.width = `${node.points}%`;
+        progress.appendChild(fill);
+        el.appendChild(progress);
     }
 
     return el;
@@ -248,16 +275,14 @@ export class SkillTree {
         const endX = (cRect.left - containerRect.left) + offsetX;
         const endY = (cRect.top + cRect.height / 2 - containerRect.top) + offsetY;
 
-        // Path Logic: Cubic Bezier for smooth curves
+        // Path Logic: Orthogonal / Manhattan Routing (Brutalist)
+        // Horizontal: Start -> (Mid X, Start Y) -> (Mid X, End Y) -> End
         const deltaX = endX - startX;
-        const cp1x = startX + deltaX * 0.5; // Control point 1
-        const cp1y = startY;
-        const cp2x = endX - deltaX * 0.5; // Control point 2
-        const cp2y = endY;
+        const midX = startX + deltaX * 0.5;
 
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const d = `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
+        const d = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
         
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', d);
         path.classList.add('st-path');
         

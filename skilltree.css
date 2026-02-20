@@ -1,135 +1,153 @@
 :root {
-  --st-font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --st-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  /* BRUTALIST THEME - CONFIGURATION */
+  --st-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --st-font-mono: 'Space Mono', monospace;
+  
+  --st-bg: #111111;
+  --st-fg: #eeeeee;
+  
+  /* Semantic Colors */
+  --st-c-locked: #333333;
+  --st-c-unlocked: #555555;
+  --st-c-active: #ffffff;
+  --st-c-accent: #ff3e00; /* International Orange */
+  --st-c-success: #00ff41; /* Terminal Green */
+  
+  --st-ease: cubic-bezier(0.19, 1, 0.22, 1); /* Expo Out */
 }
 
+/* Container & Grid */
 .st-container {
   position: relative;
   width: 100%;
   height: 100%;
-  background-color: var(--st-bg, #111);
-  color: var(--st-text, #fff);
-  font-family: var(--st-font-family);
-  overflow: auto; /* Allow scrolling */
-  isolation: isolate;
-  /* subtle grid background */
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-color: var(--st-bg);
+  color: var(--st-fg);
+  font-family: var(--st-font-display);
+  overflow: auto;
+  
+  /* Brutalist Dot Grid */
+  background-image: radial-gradient(var(--st-c-locked) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .st-connections {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Let clicks pass through to nodes */
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
   z-index: 0;
 }
 
+/* Thicker, sharper lines for brutalist feel */
 .st-path {
   fill: none;
-  stroke: var(--st-primary);
-  stroke-width: 2;
-  stroke-opacity: 0.3;
-  transition: stroke-width 0.3s, stroke-opacity 0.3s, stroke 0.3s;
+  stroke: var(--st-c-locked);
+  stroke-width: 3;
+  transition: stroke 0.3s, stroke-width 0.3s;
 }
 
 .st-path-highlight {
-  stroke: var(--st-primary);
-  stroke-width: 4;
-  stroke-opacity: 1;
-  filter: drop-shadow(0 0 5px var(--st-primary));
+  stroke: var(--st-c-accent);
+  stroke-width: 5;
+  z-index: 10;
 }
 
 .st-grid {
   display: flex;
-  flex-direction: row; /* Horizontal layout by default */
-  padding: 50px;
+  padding: 80px;
+  gap: 150px; /* Increased gap for step lines */
   min-width: max-content;
-  min-height: max-content;
-  gap: var(--st-gap, 100px);
   z-index: 1;
   position: relative;
-}
-
-.st-vertical.st-grid {
-  flex-direction: column;
 }
 
 .st-layer {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: var(--st-gap, 80px);
+  gap: 60px;
 }
 
-.st-vertical .st-layer {
-  flex-direction: row;
-}
-
+/* --- NODES --- */
 .st-node {
   position: relative;
-  width: var(--st-node-size, 80px);
-  height: var(--st-node-size, 80px);
-  background: rgba(20, 20, 20, 0.9);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  /* Root nodes larger, Leaves smaller handled by modifiers below */
+  width: 100px; 
+  height: 100px;
+  
+  background: var(--st-bg);
+  border: 4px solid var(--st-c-locked);
+  
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  
   cursor: pointer;
-  transition: all 0.4s var(--st-ease);
+  transition: transform 0.2s var(--st-ease), box-shadow 0.2s;
   user-select: none;
   z-index: 2;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  
+  /* Hard shadow */
+  box-shadow: 6px 6px 0px var(--st-c-locked);
 }
 
-/* Hexagon Shape Option (if desired, currently rounded rect) */
-/*
-.st-node {
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  border-radius: 0;
-}
-*/
-
-.st-node::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  padding: 2px;
-  background: linear-gradient(45deg, var(--st-primary), transparent, var(--st-secondary));
-  -webkit-mask: 
-     linear-gradient(#fff 0 0) content-box, 
-     linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0.5;
-  transition: opacity 0.3s;
+/* Hierarchy Sizing */
+.st-node-root {
+  width: 140px;
+  height: 140px;
+  border-width: 6px;
 }
 
+.st-node-leaf {
+  width: 80px;
+  height: 80px;
+  border-width: 3px;
+}
+
+/* Hover Effects */
 .st-node:hover {
-  transform: translateY(-5px) scale(1.05);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-  background: rgba(40, 40, 40, 0.95);
-  border-color: var(--st-primary);
+  transform: translate(-4px, -4px);
+  box-shadow: 10px 10px 0px var(--st-c-accent);
+  border-color: var(--st-c-accent);
+  z-index: 10;
 }
 
-.st-node:hover::before {
-  opacity: 1;
+/* Semantic States */
+.st-locked {
+  opacity: 0.7;
+  filter: grayscale(100%);
+  cursor: not-allowed;
 }
 
+.st-unlocked {
+  border-color: var(--st-c-unlocked);
+  box-shadow: 6px 6px 0px var(--st-c-unlocked);
+}
+
+.st-started {
+  border-color: var(--st-c-active);
+  box-shadow: 6px 6px 0px var(--st-c-active);
+}
+
+.st-completed {
+  border-color: var(--st-c-success);
+  box-shadow: 6px 6px 0px var(--st-c-success);
+}
+.st-completed:hover {
+    box-shadow: 10px 10px 0px var(--st-c-success);
+}
+
+/* Highlighting Logic */
 .st-node.st-highlight {
-  border-color: var(--st-primary);
-  box-shadow: 0 0 20px var(--st-primary);
+  border-color: var(--st-c-accent);
 }
 
+/* Inner Icon */
 .st-node-icon {
-  width: 50%;
-  height: 50%;
+  width: 40%;
+  height: 40%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -139,88 +157,111 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: grayscale(100%);
-  transition: filter 0.3s;
+  filter: grayscale(100%); 
 }
 
-.st-node:hover .st-node-icon img,
-.st-node.st-highlight .st-node-icon img {
+/* Reveal icon color on master/hover */
+.st-completed .st-node-icon img,
+.st-node:hover .st-node-icon img {
   filter: grayscale(0%);
-  filter: drop-shadow(0 0 5px var(--st-primary));
 }
 
 .st-node-icon.text-fallback {
-    font-weight: bold;
-    font-size: 1.5rem;
-    color: var(--st-text);
+  font-family: var(--st-font-mono);
+  font-weight: 700;
+  font-size: 2rem;
+  color: var(--st-fg);
 }
 
-/* Hover/Focus Info */
+/* --- TOOLTIP / INFO --- */
+/* Brutalist "Tag" style instead of floating tooltip */
 .st-node-content {
   position: absolute;
-  bottom: calc(100% + 15px);
+  top: -60px; /* Above node */
   left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  width: 220px;
-  background: rgba(10, 10, 10, 0.95);
-  border: 1px solid var(--st-primary);
+  transform: translateX(-50%) scale(0.9);
+  
+  width: 250px;
+  background: var(--st-bg);
+  border: 2px solid var(--st-fg);
   padding: 12px;
-  border-radius: 8px;
+  
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s var(--st-ease);
   pointer-events: none;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-  text-align: center;
-  z-index: 10;
+  
+  box-shadow: 4px 4px 0px var(--st-fg);
+  transition: opacity 0.1s, transform 0.1s;
+  z-index: 100;
 }
 
 .st-node:hover .st-node-content,
 .st-node:focus-within .st-node-content {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%) scale(1);
+}
+
+.st-node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--st-fg);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
 }
 
 .st-node-title {
-  font-weight: 700;
-  color: var(--st-primary);
-  margin-bottom: 6px;
-  font-size: 0.9rem;
+  font-family: var(--st-font-display);
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
+.st-node-meta {
+  font-family: var(--st-font-mono);
+  font-size: 0.7rem;
+  font-weight: bold;
 }
 
 .st-node-desc {
-  font-size: 0.8rem;
-  color: #aaa;
+  font-family: var(--st-font-mono);
+  font-size: 0.75rem;
   line-height: 1.4;
+  color: #aaa;
 }
 
-.st-node-points {
-    position: absolute;
-    bottom: -10px;
-    background: var(--st-secondary);
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.7rem;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+/* Progress Bar (Integrated into Node) */
+.st-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: var(--st-c-locked);
 }
 
-/* Mobile responsive adjustments */
+.st-progress-bar div {
+  height: 100%;
+  background: var(--st-c-success);
+  transition: width 0.3s;
+}
+
+/* Mobile adjustments */
 @media (max-width: 768px) {
   .st-grid {
-    padding: 20px;
-    gap: 40px;
+    flex-direction: column;
+    padding: 40px;
+    gap: 60px;
   }
   
   .st-layer {
-    gap: 40px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 30px;
   }
   
-  .st-node {
-    width: 60px;
-    height: 60px;
+  .st-path {
+    display: none; /* Hide complex lines on mobile if needed, or adjust svg */
   }
 }
